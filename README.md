@@ -1,8 +1,4 @@
-StrifeModMan
+Modderator
 ============
 
-A modification program for Strife.
-
-Also necessary:
-spritesheet.png:
-http://i.imgur.com/DXe1fKy.png
+A universal, open source modification manager for games.
