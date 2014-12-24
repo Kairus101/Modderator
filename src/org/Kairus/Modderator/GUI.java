@@ -1,4 +1,4 @@
-package org.Kairus.StrifeModMan;
+package org.Kairus.Modderator;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -44,7 +44,7 @@ import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableCellRenderer;
 import javax.swing.table.TableRowSorter;
 
-import org.Kairus.StrifeModMan.modMan.onlineModDescription;
+import org.Kairus.Modderator.onlineModDescription;
 
 public class GUI extends JFrame {
 	private static final long serialVersionUID = 1L;
@@ -77,7 +77,7 @@ public class GUI extends JFrame {
 	JTextField filterMods = new JTextField(10);
 	JTextField filterOnline = new JTextField(10);
 
-	modMan modman;
+	Modderator modderator;
 
 	TableRowSorter<DefaultTableModel> sorter;
 	TableRowSorter<DefaultTableModel> sorter2;
@@ -104,10 +104,10 @@ public class GUI extends JFrame {
 		sorter2.setRowFilter(rf);
 	}
 
-	GUI(modMan mm){
+	GUI(Modderator mm){
 		// setup
-		super("Kairus101's Strife ModMan");
-		modman = mm;
+		super("Modderator");
+		modderator = mm;
 	}
 	public void init(){
 		// layout
@@ -120,7 +120,7 @@ public class GUI extends JFrame {
 		GUImenu.add(GUIexit);
 		GUImenuBar.add(GUImenu);
 
-		GUIdevMode.setSelected(modman.isDeveloper);
+		GUIdevMode.setSelected(modderator.isDeveloper);
 		GUIsettings.add(GUIdevMode);
 		GUImenuBar.add(GUIsettings);
 		
@@ -211,12 +211,12 @@ public class GUI extends JFrame {
 			public void actionPerformed(ActionEvent e) {
 				if (showYesNo("Are you sure you want to download mod", "Are you sure you want to download:\n\n"+modDownloadName) == 0){
 					//download time!
-					modman.downloadMod(modman.repoPath+modDownloadLink.replace(" ", "%20"), "mods/"+modDownloadLink.substring(modDownloadLink.lastIndexOf("/")+1), modDownloadName);
+					modderator.downloadMod(modderator.repoPath+modDownloadLink.replace(" ", "%20"), "mods/"+modDownloadLink.substring(modDownloadLink.lastIndexOf("/")+1), modDownloadName);
 					int o = 0;
-					for (onlineModDescription i:modman.onlineModList){
+					for (onlineModDescription i:modderator.onlineModList){
 						if (i.link.equals(modDownloadLink)){
 							removeFromTable2(o);
-							modman.onlineModList.remove(o);
+							modderator.onlineModList.remove(o);
 							makeTable2Data();
 							break;
 						}
@@ -249,7 +249,7 @@ public class GUI extends JFrame {
 					bout.flush();
 					bout.close();
 					in.close();
-					showMessage("Created "+new File("Modded Strife.exe").getAbsolutePath()+", this needs to stay next to modManager.jar, but you can create shortcuts from it or pin it to your taskbar!");
+					showMessage("Created "+new File("Modded Strife.exe").getAbsolutePath()+", this needs to stay next to Modderator.jar, but you can create shortcuts from it or pin it to your taskbar!");
 				} catch (FileNotFoundException e2) {
 					e2.printStackTrace();
 				} catch (MalformedURLException e3) {
@@ -262,10 +262,11 @@ public class GUI extends JFrame {
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				showMessage(
-						"This mod manager is designed to apply mods to Strife.\n"+
-						"Mods go in the mods folder and should have the .strifemod format.\n"+
-						"Every time strife updates, you should re-run this program and re-apply.\n"+
-						"Troubleshooting/bugs: http://mods.strifehub.com",
+						"Modderator is designed to easily apply mods to a variety of games.\n"+
+						"Mods go in the mods folder and should have the ."+modderator.gameModule.modExtention+" format.\n"+
+						"Every time the game updates updates, you should re-run this program and re-apply.\n"+
+						"Otherwise some mods may be overridden, or break the game in some cases.\n"+
+						"Troubleshooting/bugs: REPO LINK",
 						"User help", JOptionPane.PLAIN_MESSAGE);
 			}});
 		GUIhelpDev.addActionListener(new ActionListener(){
@@ -273,24 +274,20 @@ public class GUI extends JFrame {
 			public void actionPerformed(ActionEvent e) {
 				showMessage(
 						"Directions to making a mod:\n"+
-						"1. Extract files you want to change from resources0 into\n"+
-						"<your program Files strife folder>/game/ (keeping file structures)\n"+
-						"2. Make changes to those files, these will affect strife directly\n"+
-						"  either \"reload interfaces\" in console or a restart will make changes active\n"+
-						"3. Put your modified files into a .zip, along with a mod.txt file with\n"+
+						"1. Put your modified files into a .zip, in their correct path along with a mod.txt file with\n"+
 						"  name:<name of mod>\n"+
 						"  version:<version of mod>\n"+
 						"  author:<author of mod>\n"+
 						"  category:<category of mod>\n"+
 						"  description:<description of mod>\n\n"+
-						"4. Add an icon.png to the zip file, this isn't required, but it is recommended.\n"+
-						"5. For all your modified files, place the original ones, from resources0 into\n"+
-						"  a folder named \"original\" in the zip file, then rename your .zip to .strifemod.\n"+
-						"6. run modMan, check settings->developer mode, and apply the mod.\n"
+						"2. Add an icon.png to the zip file, this isn't required, but it is recommended.\n"+
+						"3. For all your modified files, place the original ones into\n"+
+						"  a folder named \"original\" in the zip file, then rename your .zip to ."+modderator.gameModule.modExtention+".\n"+
+						"6. run Modderator, check settings->developer mode, and apply the mod.\n"
 						+ "  It will ask you if you want to make an official version.\n"
-						+ "  Say yes. Put your mod somewhere safe and put the mod it made for you into mods.\n"
+						+ "  Say yes. Put your original mod file somewhere safe and put the mod it made for you into mods.\n"
 						+ "7. Check that you can apply your official mod.\n"
-						+ "8. Go to mods.Strifehub.com, log in and upload your file.\n"
+						+ "8. Go to REPO LINK, log in and upload your file.\n"
 						+ "\n"
 						+ "There are other (harder) ways of applying the mods, similar to the HoN modMan\n"
 						+ "Go to <forum link> to get more information.",
@@ -300,28 +297,28 @@ public class GUI extends JFrame {
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				showMessage(
-						"Strife ModMan!\n"
+						"Modderator!\n"
 						+ "Developed by Kairus101\n"
-						+ "Version: "+modman.version+"\n"
-						+ "Official website: http://mods.strifehub.com (downed)\n"
+						+ "Version: "+modderator.version+"\n"
+						+ "Official website: (REPO LINK)\n"
 						+ "\n"
 						+ "Other community additions:\n"
 						+ "Anakonda: Allowing mods to have requirements.\n"
 						+ "\n"
-						+ "Want to help modman progress too? Github->kairus101\n"
+						+ "Want to help Modderator progress too? Github->kairus101\n"
 						,
-						"About Strife Modman", JOptionPane.PLAIN_MESSAGE);
+						"About Modderator", JOptionPane.PLAIN_MESSAGE);
 			}});
 		GUIapplyMods.addActionListener(new ActionListener(){
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				modman.applyMods();
+				modderator.applyMods();
 			}});
 		GUIdevMode.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent event) {
-				modman.isDeveloper = GUIdevMode.isSelected();
-				modman.saveConfig();
+				modderator.isDeveloper = GUIdevMode.isSelected();
+				modderator.saveConfig();
 			}});
 		GUIhelpChangeLog.addActionListener(new ActionListener() {
 			@Override
@@ -329,104 +326,12 @@ public class GUI extends JFrame {
 				final JFrame popup = new JFrame();
 				popup.setSize(600, 500);
 				JTextArea changes = new JTextArea();
-				popup.setTitle("ModManager ChangeLog");
+				popup.setTitle("Modderator ChangeLog");
 				changes.setText(
-						"Version 1.16\n" +
-						"  Mods are now bundled separately from the game code\n" +
-						"  No more corrupt files, no more issues with resources\n" +
-						"  Should now be linux-compatible!\n" +
-						"  .1: Made it that all mods share 1 config. Otherwise you'd lose your config lots\n" +
-						"  Changed mod applying to use /mods instead of /game/mods, to improve Strife performance\n" +
-						"  .2: Fixed a bug when the strife version ended in .0\n" +
-						"  .3: mods.strifehub is going to be down for a long time. RIP. Stopped web-downloading.\n" +
-						"\n" +
-						"-------------------------------------------\n" +
-						"Version 1.15\n" +
-						"  Mods can now specify requirements. (Courtesy of Anakonda)\n" +
-						"  Fixed a bug where mods with replaceWithoutPatchCheck with patches would fail.\n" +
-						"  Mods can now specify if they are a framework, if so, they won't show in lists.\n" +
-						"  Fixed a bug where corrupt archives stopped apply mods from working.\n" +
-						"  Removed updating mods remotely with an unofficial site, for security.\n" +
-						"  Made merge errors less detailed if not in developer mode.\n" +
-						"\n" +
-						"-------------------------------------------\n" +
-						"Version 1.14\n" +
-						"  Modman can now make moddedStrife.exe and launch Strife safely from commandline.\n" +
-						"\n" +
-						"-------------------------------------------\n" +
-						"Version 1.13\n" +
-						"  Fixed a bug when applying files.\n" +
-						"\n" +
-						"-------------------------------------------\n" +
-						"Version 1.12\n" +
-						"  Made strife update not break everything so long as you are on windows and you start it using the program.\n" +
-						"\n" +
-						"-------------------------------------------\n" +
-						"Version 1.1\n" +
-						"  Added this changelog.\n" +
-						"  Changed the look and feel of modMan to be smoother.\n" +
-						"  This makes the .jar size ~25x larger, so we will see.\n" +
-						"\n" +
-						"-------------------------------------------\n" +
-						"Version 1.09\n" +
-						"  Now filters mods by category.\n" +
-						"  Now downloads mods using a gui which is much more responsive than previously.\n" +
-						"  Added a warning message on startup - that the modman is still in beta, and strife updates can break.\n" +
-						"\n" +
-						"-------------------------------------------\n" +
-						"Version 1.08\n" +
-						"  Modman now scans S2 archives in a top-down order, like Strife, as opposed to simply using 0.\n" +
-						"\n" +
-						"-------------------------------------------\n" +
-						"Version 1.07\n" +
-						"  Applied mods once more stay enabled.\n" +
-						"  Updated mods no longer add another entry to the table.\n" +
-						"\n" +
-						"-------------------------------------------\n" +
-						"Version 1.06\n" +
-						"  Applied mods once more stay enabled.\n" +
-						"  Updated mods no longer add another entry to the table.\n" +
-						"  Fixed small bug w.r.t the table after a mod update\n" +
-						"\n" +
-						"-------------------------------------------\n" +
-						"Version 1.05\n" +
-						"  Added to GUI help popups\n" +
-						"  No longer only uses resources2.s2z\n" +
-						"  Took out rare but pointless println.\n" +
-						"\n" +
-						"-------------------------------------------\n" +
-						"Version 1.04\n" +
-						"  Added filter text boxes to filter out entries.\n" +
-						"  Changed look and feel to 'native'.\n" +
-						"  Changed the image icons to be square.\n" +
-						"  Added 'replacewithoutpatchcheck', for when you simply want to replace files without using patches. i.e model swaps.\n" +
-						"  Made descriptions/names appear on multiple lines.\n" +
-						"\n" +
-						"-------------------------------------------\n" +
-						"Version 1.03\n" +
-						"  Modman can now go online to find, download, and install mods.\n" +
-						"  No longer shows some unnecessary messages.\n" +
-						"  More aware when updates fail. (Main program and mods)\n" +
-						"  Updated for use with strife.\n" +
-						"\n" +
-						"-------------------------------------------\n" +
-						"Version 1.02\n" +
-						"  Modman now asks if you want to launch strife\n" +
-						"  Modman now auto-updates\n" +
-						"  Mods now auto update\n" +
-						"\n" +
-						"-------------------------------------------\n" +
-						"Version 1.01\n" +
-						"  Re-arranged cells\n" +
-						"  Made name cell longer\n" +
-						"  Reformatted diff_match_patch\n" +
-						"  Program now remembers applied mods\n" +
-						"  Fixed a bug with making official mod file\n" +
-						"  Added spritesheet.png\n" +
-						"\n" +
-						"-------------------------------------------\n" +
-						"Version 1\n" +
-						"  Initial commit. Things are working alright."
+						  "Version 1.01\n"
+						+ "  Refactored majority of code relating to Strife into it's own module"
+						+ "Version 1\n"
+						+ "  Branched off my Strife modman v1.16"
 				);
 				popup.add(new JScrollPane(changes));
 				popup.setVisible(true);
@@ -442,8 +347,8 @@ public class GUI extends JFrame {
 			@Override
 			public void stateChanged(ChangeEvent arg0) {
 				if (table2 == null){
-					modman.populateOnlineModsTable();
-					//modman.purgeOnlineModsTable();
+					modderator.populateOnlineModsTable();
+					modderator.purgeOnlineModsTable();
 
 					makeTable2Data();
 
@@ -475,10 +380,10 @@ public class GUI extends JFrame {
 	}
 
 	void makeTable2Data(){
-		table2Data = new Object[modman.numOnlineMods][];
+		table2Data = new Object[modderator.numOnlineMods][];
 		int i = 0;
-		for (onlineModDescription o:modman.onlineModList){
-			if (!o.framework.toLowerCase().equals("true") || modman.isDeveloper)
+		for (onlineModDescription o:modderator.onlineModList){
+			if (!o.framework.toLowerCase().equals("true") || modderator.isDeveloper)
 				table2Data[i++] = new Object[]{"<html>"+o.name+"</html>", o.rating, o.author, o.category, "<html>"+o.description+"</html>"};
 		}
 	}
@@ -514,9 +419,9 @@ public class GUI extends JFrame {
 					ListSelectionModel lsm = (ListSelectionModel)e.getSource();
 					if (!lsm.isSelectionEmpty()) {
 						int selectedRow = lsm.getMinSelectionIndex();
-						GUImodName.setText(modman.mods.get(selectedRow).name);
-						GUImodAuthor.setText(modman.mods.get(selectedRow).author);
-						GUImodVersion.setText(modman.mods.get(selectedRow).version);
+						GUImodName.setText(modderator.mods.get(selectedRow).name);
+						GUImodAuthor.setText(modderator.mods.get(selectedRow).author);
+						GUImodVersion.setText(modderator.mods.get(selectedRow).version);
 					}
 				}
 			});
@@ -559,8 +464,8 @@ public class GUI extends JFrame {
 					ListSelectionModel lsm = (ListSelectionModel)e.getSource();
 					if (!lsm.isSelectionEmpty()) {
 						int selectedRow = lsm.getMinSelectionIndex();
-						modDownloadLink = modman.onlineModList.get(selectedRow).link;
-						modDownloadName = modman.onlineModList.get(selectedRow).name;
+						modDownloadLink = modderator.onlineModList.get(selectedRow).link;
+						modDownloadName = modderator.onlineModList.get(selectedRow).name;
 						GUIdownloadMod.setEnabled(true);
 					}
 				}

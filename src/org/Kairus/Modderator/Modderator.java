@@ -1,7 +1,9 @@
-package org.Kairus.StrifeModMan;
+package org.Kairus.Modderator;
 
+import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
+import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -29,38 +31,38 @@ import javax.swing.JOptionPane;
 import javax.swing.UIManager;
 import javax.swing.table.DefaultTableModel;
 
+import org.Kairus.Modules.*;
+
 import name.fraser.neil.plaintext.diff_match_patch;
 import name.fraser.neil.plaintext.diff_match_patch.Patch;
 
-public class modMan {
+public class Modderator {
 	private static final long serialVersionUID = 1L;
 	String version = "1.16.3";
-
-	boolean reloadMods = false;
+	GameModule gameModule = new StrifeModule();
 
 	public static void main(String[] args) {
 		if (args.length>0 && args[0].equals("launchStrife")){
-			modMan mm = new modMan();
+			Modderator mm = new Modderator();
 			mm.loadFromConfig();
-			mm.launchStrife();
+			StrifeModule strifeM = new StrifeModule();
+			strifeM.launchGame();
 		}else
-			new modMan().init();
+			new Modderator().init();
 	}
 	GUI gui;
 	downloadsGUI downloadsGui;
-	String s2Path = null;
-	String repoPath = "http://mods.strifehub.com/";
-	String appliedMods = "";
+	String repoPath = "http://REPO.ADDRESS/"+gameModule.onlineName+"/";
+	public static String appliedMods = "";
 	ArrayList<mod> appliedModsList = new ArrayList<mod>();
 	boolean isDeveloper = false;
 	ArrayList<mod> mods = new ArrayList<mod>();
 	byte[] buffer = new byte[1024];
-	String strifeVersion;
 
 	HashMap<String, String> toBeAdded = new HashMap<String, String>();
 	HashMap<String, Boolean> alreadyDone = new HashMap<String, Boolean>();
 
-	public modMan(){}
+	public Modderator(){}
 	public void init(){
 		try {
 			//UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName()); //platform dependent
@@ -84,12 +86,10 @@ public class modMan {
 		downloadsGui = new downloadsGUI(this);
 
 		//update the main program
-		checkForUpdate();
+		checkForModderatorUpdate();
 
 		//load config
 		loadFromConfig();
-
-		strifeVersion = fileTools.getStrifeVersionFromFile(s2Path+"/strife.version");
 		
 		//init GUI
 		loadModFiles();
@@ -99,99 +99,34 @@ public class modMan {
 
 		gui.init();
 		downloadsGui.init();
+		
+		gameModule.init();
 
-		/*
 		if ( mods.size()>0 && gui.showYesNo("Update mods?", "Would you like to update your mods?") == 0){ //0 is yes.
 			//update mods
-			String updated = checkForModUpdates();
-			if (updated.length()>0){
+			int updated = checkForModUpdates();
+			if (updated>0){
 				gui.showMessage("Updated:\n"+updated);
-			}else
+			}else if(updated == 0)
 				gui.showMessage("All mods up to date!");
-			//if (reloadMods)
-			//	loadModFiles();
 		}
-		*/
 	}
-
-	String findFileInS2(int number, String name){
-		try {
-			for (int i = number-1;i>=0;i--){
-				ZipFile zipFile;
-				zipFile = new ZipFile(s2Path+"/game/resources"+i+".s2z");
-				ZipEntry entry =  zipFile.getEntry(name);
-				if (entry != null){
-					String r = fileTools.store(zipFile.getInputStream(entry));
-					zipFile.close();
-					return r;
-				}
-				zipFile.close();
-			}
-		} catch (IOException e1) {
-			e1.printStackTrace();
-		}
-		return null;
-	}
-
-	int archiveNumber = 1;
-	String findArchives(){
-		archiveNumber = 1;
-		String output = null;
-		while (true){
-			output = s2Path+"/game/resources"+archiveNumber+".s2z";
-			ZipFile zipFile = null;
-			try {
-				zipFile = new ZipFile(output);
-				if ((zipFile.getComment() != null && zipFile.getComment().equals("Long live... ModMan!")) || 
-				  (new File(output).length()<10000 && zipFile.size() != 0)
-				  ){
-					//we've found our guy.
-					zipFile.close();
-					new File(output).delete(); // REMOVE OUT-DATED S2Z FORMAT!
-					//archiveNumber--;
-					break;
-				}
-				zipFile.close();
-			} catch (ZipException e){
-				new File(output).delete();
-				//archiveNumber--;
-				return output; //corrupt zip file. This is oue guy.
-			} catch (java.io.FileNotFoundException e) {
-				// perfect, doesn't even exist.
-				//archiveNumber--;
-				return output;
-			} catch (IOException e) {
-				e.printStackTrace();
-			} finally {
-				try {
-					if (zipFile != null)
-						zipFile.close();
-				} catch (IOException e) {}
-			}
-			archiveNumber++;
-		}
-		return output;
-
-	}
-
-	String output = null;
-
+	
+	
 	boolean applyMod(mod m) throws java.io.IOException	{
-		// Delete old mod files
-		recursiveDelete(new File(s2Path+"/game/mods/"));
-		recursiveDelete(new File(s2Path+"/mods/"+m.name+"/"));
-		
 		appliedMods += m.name+"|";
 		m.patchesToSave.clear();
+		
+		
+		
 		ZipFile sourceZip = new ZipFile(m.fileName);
 		for (String s: m.fileNames){
 
-			String fileInS2 = findFileInS2(archiveNumber, s);
+			String foundFile = gameModule.findFile(s);
 			ZipEntry patchFile = sourceZip.getEntry("patch_"+s);//patch
 			
-			
 			//source
-			if ((fileInS2==null || m.replaceWithoutPatchCheck) && patchFile == null){ //new file
+			if ((foundFile==null || m.replaceWithoutPatchCheck) && patchFile == null){ //new file
 				ZipEntry sourceFile = sourceZip.getEntry(s);
 				InputStream zis = sourceZip.getInputStream(sourceFile);
 
@@ -202,16 +137,12 @@ public class modMan {
 					continue;
 				}
 				alreadyDone.put(s, true);
-
-				File f = new File(s2Path+"/mods/"+m.name.replace(" ", "_")+"/"+s);
-				f.getParentFile().mkdirs();
-				f.createNewFile();
-				FileOutputStream fos = new FileOutputStream(f);
-				int len;
-				while ((len = zis.read(buffer)) > 0) {
-					fos.write(buffer, 0, len);
-				}
-				fos.close();
+				
+				DataInputStream dis = new DataInputStream(zis);
+				byte[] data = new byte[(int) sourceFile.getSize()];
+				dis.readFully(data);
+				gameModule.write(m, s, data);
+				
 			}else{
 				//we need to perform a diff.
 				//step 1, check for a patch file, if so, skip to step 3
@@ -228,7 +159,7 @@ public class modMan {
 				if (toBeAdded.get(s) != null){ // not the first mod
 					current = toBeAdded.get(s);
 				}else
-					current = fileInS2; //current
+					current = foundFile; //current
 
 				//step 1
 				//check for a patch file, if so, skip to step 3
@@ -275,19 +206,13 @@ public class modMan {
 				}
 				toBeAdded.remove(s);
 				toBeAdded.put(s, (String)result[0]);
-				
 
-				File f = new File(s2Path+"/mods/"+m.name.replace(" ", "_")+"/"+s);
-				f.getParentFile().mkdirs();
-				PrintWriter fos = new PrintWriter(f);
-				fos.print((String)result[0]);
-				fos.close();
-
+				gameModule.write(m, s, ((String)result[0]).getBytes());
 			}
 		}
 		sourceZip.close();
 		if (m.patchesToSave.size() > 0){
-			int n = gui.showYesNo("Compress", "Save new official strifemod?");
+			int n = gui.showYesNo("Compress", "Save new official "+gameModule.name+" mod?");
 			if (n==0){
 				String[] filesToDelete = new String[2*m.patchesToSave.size()+1];
 				filesToDelete[2*m.patchesToSave.size()] = "original/";
@@ -305,49 +230,38 @@ public class modMan {
 					it.remove(); // avoids a ConcurrentModificationException
 					i++;
 				}
-				fileTools.remakeZipEntry(m.name+"_official.strifemod", new File(m.fileName), filesToDelete, filesToAdd, content);
-				gui.showMessage("Created official mod at: "+new File(m.name+"_official.strifemod").getAbsolutePath());
+				fileTools.remakeZipEntry(m.name+"_official."+gameModule.modExtention, new File(m.fileName), filesToDelete, filesToAdd, content);
+				gui.showMessage("Created official mod at: "+new File(m.name+"_official."+gameModule.modExtention).getAbsolutePath());
 			}
 		}
 		appliedModsList.add(m);
 		return true;
 	}
 
-	LinkedHashSet<mod> arrangeRequirements(mod Mod)
-	{
+	LinkedHashSet<mod> insertModRequirements(mod Mod){
 		LinkedHashSet<mod> returnArray = new LinkedHashSet<mod>();
-		for(String requirement : Mod.requirements)
-		{
+		for(String requirement : Mod.requirements){
 			boolean requirementFound = false;
-			for(mod m : mods)
-			{
-				if(!m.equals(Mod) && m.name.toLowerCase().equals(requirement.toLowerCase()))
-				{
+			for(mod m : mods){
+				if(!m.equals(Mod) && m.name.toLowerCase().equals(requirement.toLowerCase())){
 					requirementFound = true;
-					returnArray.addAll(arrangeRequirements(m));
+					returnArray.addAll(insertModRequirements(m));
 				}
 			}
-			if(!requirementFound)
-			{
+			if(!requirementFound){
 				//internet
-				for(onlineModDescription m : onlineModList)
-				{
-					if(m.name.toLowerCase().equals(requirement.toLowerCase()))
-					{
+				for(onlineModDescription m : onlineModList){
+					if(m.name.toLowerCase().equals(requirement.toLowerCase())){
 						requirementFound = true;
-						downloadsGUI.downloadMod modDownload = downloadMod((repoPath + m.link).replace(" ", "%20"), System.getProperty("user.dir") + "/mods/" + m.name + ".strifemod", m.name);
-						try
-						{
+						downloadsGUI.downloadMod modDownload = downloadMod((repoPath + m.link).replace(" ", "%20"), System.getProperty("user.dir") + "/mods/" + m.name + "."+gameModule.modExtention, m.name);
+						try{
 							//Wait for the download to complete
 							modDownload.get();
-						}
-						catch(Exception e)
-						{
+						}catch(Exception e){
 							System.out.println(e);
 						}
-						File modFile = new File(System.getProperty("user.dir") + "/mods/" + m.name + ".strifemod");
-						if(modFile.exists())
-						{
+						File modFile = new File(System.getProperty("user.dir") + "/mods/" + m.name + "."+gameModule.modExtention);
+						if(modFile.exists()){
 							mod newMod = fileTools.loadModFile(modFile, this);
 							returnArray.add(newMod);
 							this.gui.tableData[this.gui.tableData.length - 1][0] = true;
@@ -356,8 +270,7 @@ public class modMan {
 					}
 				}
 			}
-			if(!requirementFound)
-			{
+			if(!requirementFound){
 				//Panic?
 				//return empty list to not apply this mod nor any of its requirements?
 				this.gui.showMessage("Could not find mod " + requirement + " requirement for " + Mod.name);
@@ -368,17 +281,20 @@ public class modMan {
 		return returnArray;
 	}
 	
-	void recursiveDelete(File file) {
-        if (!file.exists())
-            return;
-        if (file.isDirectory()) {
-            for (File f : file.listFiles()) {
-                recursiveDelete(f);
-            }
-        }
-        file.delete();
-    }
-
+	LinkedHashSet<mod> getModsToApply(){
+		int o = 0;
+		LinkedHashSet<mod> modsToApply = new LinkedHashSet<mod>();
+		ArrayList<mod> currentMods = new ArrayList<mod>(this.mods);
+		
+		// Add framework mods 
+		for (mod m: currentMods){
+			if (!m.framework && (Boolean)gui.tableData[o++][0] == true)	{
+				modsToApply.addAll(insertModRequirements(m));
+			}
+		}
+		return modsToApply;
+	}
+	
 	void applyMods(){
 
 		//populateOnlineModsTable();
@@ -386,31 +302,17 @@ public class modMan {
 		toBeAdded.clear();
 		alreadyDone.clear();
 
-		//toBeAdded.put("modmanPlaceholder", "");
-
-		//lets find out output.
-		output = findArchives();
-
 		boolean success = true;
-
-		new File(s2Path+"/mods/").mkdirs();
+		
+		// Get all requirements
+		LinkedHashSet<mod> modsToApply = getModsToApply();
 		
 		try {
+			// Add all mods to be added
 			appliedMods = "";
-			this.appliedModsList.clear();
+			appliedModsList.clear();
 			
-			int o = 0;
-			LinkedHashSet<mod> modsToApply = new LinkedHashSet<mod>();
-			ArrayList<mod> currentMods = new ArrayList<mod>(this.mods);
-			
-			// Add framework mods 
-			for (mod m: currentMods){
-				if (!m.framework && (Boolean)gui.tableData[o++][0] == true)	{
-					modsToApply.addAll(arrangeRequirements(m));
-				}
-			}
-
-			// Add normal mods
+			// Apply all mods
 			for (mod m: modsToApply)
 			{
 				if(!applyMod(m))
@@ -419,7 +321,7 @@ public class modMan {
 					break;
 				}
 			}
-
+			
 			//step 4
 			//apply any xml modifications.
 			for (mod m: modsToApply){
@@ -461,77 +363,37 @@ public class modMan {
 						}
 						toBeAdded.remove(file);
 						toBeAdded.put(file, newText);
-
-						File f = new File(s2Path+"/mods/"+m.name.replace(" ", "_")+"/"+file);
-						PrintWriter fos = new PrintWriter(f);
-						fos.print(newText);
-						fos.close();
+						
+						gameModule.write(m, file, (newText).getBytes());
 					}
 				}
 			}
-			// Create our lua script, if mods have been selected
-			//String modmanLoader = fileTools.store(new FileInputStream(new File("modman.lua")));
-			// It's much easier to hard-code the lua into the modman code.
-			String modmanLoader = "--Long live... ModMan!\nlibThread.threadFunc(function()\n	wait(500)\n	if GetCvarString('host_version') ~= '{version}' then\n		GenericDialog(\n			Translate('Outdated Mods'), Translate('^rYour mods are out of date!\\n^*Do you want to shut down Strife, so you can open modman and re-apply mods?\\nOtherwise you may have game-breaking bugs!'), '', Translate('general_ok'), Translate('I\\\'ll deal'), \n			function()\n				Cmd('Quit')\n			end,\n			function()\n				--Cmd('Quit')\n			end,\n			nil,\n			nil,\n			true\n		)\n	end\nend)";
-			modmanLoader = modmanLoader.replace("{version}", strifeVersion);
-			PrintWriter pout = new PrintWriter(new File(s2Path+"/mods/modman.lua"));
-			pout.print(modmanLoader);
-			pout.close();
-			
+
 			saveConfig();
 
-			if (success && gui.showYesNo("Success.", "Mod merge successful.\n\nLaunch Strife") == 0){ //0 is yes.
-				launchStrife();
+			gameModule.onEndApplyMods();
+			
+			if (success && gui.showYesNo("Success.", "Mod merge successful.\n\nLaunch "+gameModule.name) == 0){ //0 is yes.
+				gameModule.launchGame();
 			}
 
 		} catch (java.io.FileNotFoundException e){
 			e.printStackTrace();
-			gui.showMessage("Failure, archive open or non-existant\nAre you running Strife? Close it.\nHave you got a mod/resource file open? Close it.", "Failed to open files warning", JOptionPane.ERROR_MESSAGE);
+			gui.showMessage("Failure, archive open or non-existant\nAre you running "+gameModule.name+"? Close it.\nHave you got a mod/resource file open? Close it.", "Failed to open files warning", JOptionPane.ERROR_MESSAGE);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-	}
-	
-	String getLaunchParams(){
-		String ret = "game";
-		boolean applied = false;
-		simpleStringParser parser = new simpleStringParser(appliedMods);
-		while (true){
-			String mod = parser.GetNextString();
-			if (mod == null)
-				break;
-			ret += ";mods/"+mod.replace(" ", "_");
-			applied = true;
-		}
-		if (applied)
-			ret += ";moddedStrife"; // Make all configs in this folder
-		return ret;
-	}
-
-	void launchStrife(){
-		if (output == null) output = findArchives();
-		final ProcessBuilder builder = new ProcessBuilder(s2Path+"/bin/strife", 
-				"-mod", getLaunchParams(),
-				"-execute", "set host_autoexec \"\"\"script \\\\\\\"dofile 'mods/modman.lua'\\\\\\\"\"\"\"\""//,
-				//"-config", "../../game/"
-		);
-		try {
-			Process p = builder.start();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		System.exit(0);
 	}
 
 	public void addFileIfNotAdded(HashMap<String, String> toBeAdded, String file) throws IOException{
 		if (toBeAdded.get(file) == null){//we need to add the file to toBeAdded
-			String s2File = findFileInS2(archiveNumber, file);
-			if (s2File == null){
+			String foundFile = gameModule.findFile(file);
+			if (foundFile == null){
 				gui.showMessage("Error: file: "+file+" not found! Mod won't be applied.", "Mod merge unsuccessful", 1);
 				System.out.println("Error: file: "+file+" not found! Mod won't be applied.");
 				throw new IOException();
 			}else{
-				toBeAdded.put(file, s2File);
+				toBeAdded.put(file, foundFile);
 			}
 		}
 	}
@@ -543,7 +405,7 @@ public class modMan {
 			folder.mkdirs();
 
 		for (final File fileEntry : folder.listFiles()) {
-			if (fileEntry.getName().toLowerCase().endsWith(".strifemod")) {
+			if (fileEntry.getName().toLowerCase().endsWith("."+gameModule.modExtention)) {
 				mods.add(fileTools.loadModFile(fileEntry, this));
 			}
 		}
@@ -578,9 +440,9 @@ public class modMan {
 		try {
 			BufferedReader reader = new BufferedReader(new FileReader("config.txt"));
 			//S2 path
-			s2Path = reader.readLine();
-			if (s2Path == null)
-				s2Path = "";
+			gameModule.filePath = reader.readLine();
+			if (gameModule.filePath == null)
+				gameModule.filePath = "";
 			//Developer mode
 			if (reader.readLine().equals("1"))
 				isDeveloper = true;
@@ -593,7 +455,7 @@ public class modMan {
 
 			reader.close();
 		} catch (FileNotFoundException e1) {
-			gui.showMessage("Welcome to Strife ModMan!\nPlease select your strife folder.",
+			gui.showMessage("Welcome to Modderator!\nPlease select your GAME-TODO.",
 					"Welcome!", JOptionPane.PLAIN_MESSAGE);
 
 			JFileChooser chooser = new JFileChooser();
@@ -601,7 +463,7 @@ public class modMan {
 			int returnVal = chooser.showOpenDialog(null);
 
 			if(returnVal == JFileChooser.APPROVE_OPTION) {
-				s2Path = chooser.getSelectedFile().getAbsolutePath();
+				gameModule.filePath = chooser.getSelectedFile().getAbsolutePath();
 				saveConfig();
 			}else
 				System.exit(0);
@@ -623,7 +485,7 @@ public class modMan {
 	public void saveConfig(){
 		try {
 			PrintWriter pr = new PrintWriter(new File("config.txt"));
-			pr.println(s2Path);
+			pr.println(gameModule.filePath);
 			if (isDeveloper)
 				pr.println(1);
 			else
@@ -635,7 +497,7 @@ public class modMan {
 		}
 	}
 
-	private void checkForUpdate(){
+	private void checkForModderatorUpdate(){
 		try {
 			BufferedReader webIn;
 			webIn = new BufferedReader(new InputStreamReader(new URL("http://pastebin.com/raw.php?i=aXuwRyFM").openStream()));
@@ -676,7 +538,7 @@ public class modMan {
 				System.exit(0);
 			}
 		} catch (Exception e) {
-			gui.showMessage("Failed to update modman.\nThis could be because:\n\n"/*+"You aren't connected to the internet\nYou are using a proxy\n"*/+"strifehub.com is down.","Failure updateing modman",0);
+			gui.showMessage("Failed to update modman.\nThis could be because:\n\n"/*+"You aren't connected to the internet\nYou are using a proxy\n"*/+"MOD REPO is down.","Failure updateing Modderator",0);
 		}
 	}
 
@@ -688,9 +550,9 @@ public class modMan {
 		return null;
 	}
 
-	public void populateOnlineModsTable(){
+	public boolean populateOnlineModsTable(){
 		if (onlineModList.size()==0){
-			/*
+			
 			//populate the online mods table.
 			try {
 				BufferedReader webIn;
@@ -700,12 +562,12 @@ public class modMan {
 					if (input.startsWith("<")) throw new Exception();
 					onlineModList.add(new onlineModDescription(input));
 				}
-			} catch (Exception e) {*/
-				gui.showMessage("Failed to get mods.\nThis could be because:\n\n"/*+"You aren't connected to the internet\nYou are using a proxy\n"*/+"strifehub.com is down.","Failure updateing modman",0);
-				//e.printStackTrace();
-				//onlineModList.add(new onlineModDescription("example mod|Kairus101|1.0|1|gameplay|use ^q to make your text rainbow|RainbowAdder.strifemod|false"));
-			//}
+			} catch (Exception e) {
+				gui.showMessage("Failed to get mods.\nThis could be because:\n\n"/*+"You aren't connected to the internet\nYou are using a proxy\n"*/+"mod repo is down.","Failure updateing Modderator",0);
+				return false;
+			}
 		}
+		return true;
 	}
 
 	private boolean purgedOnlineList = false;
@@ -739,55 +601,47 @@ public class modMan {
 		purgedOnlineList = true;
 	}
 
-	private String checkForModUpdates(){
+	private int checkForModUpdates(){
 
-		populateOnlineModsTable();
+		if (!populateOnlineModsTable()) return -1;
 		purgedOnlineList = false;
 
-		String updated="";
+		int updated=0;
 		for (int i = 0; i < mods.size(); i++){
 			mod m = mods.get(i);
 
-			try {
-				String latestVersion = null;
-				String latestLink = null;
+			String latestVersion = null;
+			String latestLink = null;
 
-				//check mod repo
-				onlineModDescription onlineModDesc = getOnlineModDescription(m.name);
-				if (onlineModDesc!=null){
-					latestVersion = onlineModDesc.version;
-					latestLink = repoPath+onlineModDesc.link.replace(" ", "%20");
+			//check mod repo
+			onlineModDescription onlineModDesc = getOnlineModDescription(m.name);
+			if (onlineModDesc!=null){
+				latestVersion = onlineModDesc.version;
+				latestLink = repoPath+onlineModDesc.link.replace(" ", "%20");
+			}
+			/*// Disabled external(uncheckable) updating
+			//check mod update link
+			if (m.updateLink != null){
+				BufferedReader webIn;
+				webIn = new BufferedReader(new InputStreamReader(new URL(m.updateLink).openStream()));
+				String version = webIn.readLine();
+				String link = webIn.readLine();
+				//if we are out of date, and the link version is higher than the repo version
+				if (!version.equals(m.version) && (latestVersion==null || version.compareTo(latestVersion) > 0)){
+					latestVersion = version;
+					latestLink = link;
 				}
-				//check mod update link
-				if (m.updateLink != null){
-					BufferedReader webIn;
-					webIn = new BufferedReader(new InputStreamReader(new URL(m.updateLink).openStream()));
-					String version = webIn.readLine();
-					String link = webIn.readLine();
-					//if we are out of date, and the link version is higher than the repo version
-					if (!version.equals(m.version) && (latestVersion==null || version.compareTo(latestVersion) > 0)){
-						latestVersion = version;
-						latestLink = link;
-					}
+			}
+			*/
+			//we have an update, grab it.
+			if (latestVersion!=null && m.version.compareTo(latestVersion) < 0){
+				updated++;
+				downloadMod(latestLink, m.fileName, m.name);
+				if (!m.framework){
+					gui.removeFromTable1(mods.indexOf(m));
 				}
-				//we have an update, grab it.
-				if (latestVersion!=null && m.version.compareTo(latestVersion) < 0){
-					updated += m.name + " "+m.version+" -> "+latestVersion+"\n";
-					downloadMod(latestLink, m.fileName, m.name);
-					if (!m.framework){
-						gui.removeFromTable1(mods.indexOf(m));
-					}
-					mods.remove(i);
-					i--;
-				}
-			} catch (MalformedURLException e) {
-				gui.showMessage("Failed to update "+m.name+".");
-				e.printStackTrace();
-				System.exit(0);
-			} catch (IOException e) {
-				gui.showMessage("Failed to update "+m.name+".");
-				e.printStackTrace();
-				System.exit(0);
+				mods.remove(i);
+				i--;
 			}
 		}
 		return updated;
@@ -797,43 +651,5 @@ public class modMan {
 		return downloadsGui.downloadMod(link, filename, name);
 	}
 
-
-	class simpleStringParser{
-		String text;
-		simpleStringParser(String text){
-			this.text = text;
-		}
-		public String GetNextString(){
-			if (text.length() == 0) return null;
-			int nextSeperator = text.indexOf("|");
-			if (nextSeperator == -1) return null;
-			String currentString = text.substring(0, nextSeperator);
-			text = text.substring(nextSeperator+1);
-			if (currentString.startsWith("\n")) currentString = currentString.substring(1);
-			if (currentString.endsWith("\n")) currentString = currentString.substring(0,currentString.length()-1);
-			return currentString;
-		}
-	}
-
-	class onlineModDescription{
-		String name;
-		String author;
-		String version;
-		String rating;
-		String category;
-		String description;
-		String link;
-		String framework;
-		onlineModDescription(String text){
-			simpleStringParser ssp = new simpleStringParser(text);
-			name=ssp.GetNextString();
-			author=ssp.GetNextString();
-			version=ssp.GetNextString();
-			rating=ssp.GetNextString();
-			category=ssp.GetNextString();
-			description=ssp.GetNextString();
-			link=ssp.GetNextString();
-			framework=ssp.GetNextString();
-		}
-	}
+	
 }

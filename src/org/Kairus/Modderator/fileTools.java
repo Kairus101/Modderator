@@ -1,4 +1,4 @@
-package org.Kairus.StrifeModMan;
+package org.Kairus.Modderator;
 
 import java.awt.Image;
 import java.io.BufferedReader;
@@ -22,7 +22,7 @@ import javax.swing.ImageIcon;
 
 public class fileTools {
 
-	static String store(InputStream is) throws IOException {
+	public static String store(InputStream is) throws IOException {
 		BufferedReader rdr = new BufferedReader(new InputStreamReader(is));
 		StringWriter sw = new StringWriter();
 		for (;;) {
@@ -34,7 +34,7 @@ public class fileTools {
 		return sw.toString();
 	}
 
-	static mod loadModFile(File file, modMan mm){
+	static mod loadModFile(File file, Modderator mm){
 		//get the zip file content
 		try {
 			FileInputStream fis = new FileInputStream(file);
@@ -162,7 +162,7 @@ public class fileTools {
 		a.add(o);
 	}
 	
-	static String getStrifeVersionFromFile(String path){
+	public static String getStrifeVersionFromFile(String path){
 		String version = "";
 		try {
 			BufferedReader reader = new BufferedReader(new FileReader(path));
@@ -180,4 +180,15 @@ public class fileTools {
 		}
 		return version;
 	}
+	
+	public static void recursiveDelete(File file) {
+        if (!file.exists())
+            return;
+        if (file.isDirectory()) {
+            for (File f : file.listFiles()) {
+                recursiveDelete(f);
+            }
+        }
+        file.delete();
+    }
 }

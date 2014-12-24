@@ -1,4 +1,4 @@
-package org.Kairus.StrifeModMan;
+package org.Kairus.Modderator;
 
 import java.io.BufferedOutputStream;
 import java.io.File;
@@ -15,8 +15,8 @@ import javax.swing.SwingWorker;
 public class downloadsGUI extends JFrame {
 	
 	ArrayList<downloadMod> downloading = new ArrayList<downloadMod>();
-	modMan parent = null;
-	downloadsGUI(modMan parent){
+	Modderator parent = null;
+	downloadsGUI(Modderator parent){
 		super("mods downloading");
 		this.parent = parent;
 	}
@@ -45,9 +45,9 @@ public class downloadsGUI extends JFrame {
 		JProgressBar bar = new JProgressBar(JProgressBar.HORIZONTAL, 0, 100);
 		String filename = null;
 		String link = null;
-		modMan parent = null;
+		Modderator parent = null;
 		downloadsGUI parent2 = null;
-		downloadMod(String link, String filename, modMan parent, downloadsGUI parent2){
+		downloadMod(String link, String filename, Modderator parent, downloadsGUI parent2){
 			this.link = link;
 			this.filename = filename;
 			this.parent = parent;
