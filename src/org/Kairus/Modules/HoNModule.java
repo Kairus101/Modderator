@@ -1,12 +1,8 @@
 package org.Kairus.Modules;
 
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
-import java.io.FileReader;
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipException;
 import java.util.zip.ZipFile;
@@ -16,22 +12,19 @@ import org.Kairus.Modderator.mod;
 import org.Kairus.Modderator.simpleStringParser;
 import org.Kairus.Modderator.Modderator;
 
-public class StrifeModule extends GameModule {
+public class HoNModule extends GameModule {
 	
 	// Module info
-	public StrifeModule(){
-		name = "Strife";
-		onlineName = "Strife";
-		modExtention = "strifemod";
+	public HoNModule(){
+		name = "Hon";
+		onlineName = "Hon";
+		modExtention = "honmod";
 		warningOnNoExe = true;
-		exeURL = "https://dl.dropboxusercontent.com/s/cd84fjiohmhh14f/Modded%20Strife.exe?dl=1&token_hash=AAF_M_3M7-cZq8khwnaf1xiPk57kuc5cEL2WgY3_jMicOQ";
+		exeURL = "";
 	}
 	
 	// Game vars
-	String strifeVersion;
 	int archiveNumber = 1;
-	
-	
 	
 	public String findFile(String name){
 		try {
@@ -117,29 +110,14 @@ public class StrifeModule extends GameModule {
 			applied = true;
 		}
 		if (applied)
-			ret += ";moddedStrife"; // Make all configs in this folder
+			ret += ";moddedHoN"; // Make all configs in this folder
 		return ret;
 	}
 
 	@Override
 	public void launchGame(){
-		try {
-			// Create our lua script
-			// It's much easier to hard-code the lua into the modman code.
-			String modmanLoader = "--Long live... ModMan!\nlibThread.threadFunc(function()\n	wait(500)\n	if GetCvarString('host_version') ~= '{version}' then\n		GenericDialog(\n			Translate('Outdated Mods'), Translate('^rYour mods are out of date!\\n^*Do you want to shut down Strife, so you can open modman and re-apply mods?\\nOtherwise you may have game-breaking bugs!'), '', Translate('general_ok'), Translate('I\\\'ll deal'), \n			function()\n				Cmd('Quit')\n			end,\n			function()\n				--Cmd('Quit')\n			end,\n			nil,\n			nil,\n			true\n		)\n	end\nend)";
-			modmanLoader = modmanLoader.replace("{version}", strifeVersion);
-			PrintWriter pout;
-			pout = new PrintWriter(new File(filePath+"/mods/modman.lua"));
-			pout.print(modmanLoader);
-			pout.close();
-		} catch (FileNotFoundException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		
-		final ProcessBuilder builder = new ProcessBuilder(filePath+"/bin/strife", 
-				"-mod", getLaunchParams(),
-				"-execute", "set host_autoexec \"\"\"script \\\\\\\"dofile 'mods/modman.lua'\\\\\\\"\"\"\"\""//,
+		final ProcessBuilder builder = new ProcessBuilder(filePath+"/hon", 
+				"-mod", getLaunchParams()
 		);
 		try {
 			builder.start();
@@ -159,32 +137,11 @@ public class StrifeModule extends GameModule {
 	public void onEndApplyMods() {
 		
 	}
-
-	public static String getStrifeVersionFromFile(String path){
-		String version = "";
-		try {
-			BufferedReader reader = new BufferedReader(new FileReader(path));
-			reader.readLine();
-			version = reader.readLine();
-			version = version.substring(0, version.lastIndexOf("\""));
-			version = version.substring(version.lastIndexOf("\"")+1);
-			while (version.endsWith(".0")) version = version.substring(0, version.length()-2);
-			reader.close();
-			//System.out.println(version);
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		return version;
-	}
-
+	
 	@Override
 	public void init() {
-		strifeVersion = getStrifeVersionFromFile(filePath+"/strife.version");
 	}
-
-
+	
 	@Override
 	public void write(mod m, String path, byte[] data) {
 		File f = new File(filePath+"/mods/"+m.name.replace(" ", "_")+"/"+path);

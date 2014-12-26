@@ -39,7 +39,7 @@ import name.fraser.neil.plaintext.diff_match_patch.Patch;
 public class Modderator {
 	private static final long serialVersionUID = 1L;
 	String version = "1.16.3";
-	GameModule gameModule = new StrifeModule();
+	GameModule gameModule;// = new StrifeModule();
 
 	public static void main(String[] args) {
 		if (args.length>0 && args[0].equals("launchStrife")){
@@ -52,7 +52,7 @@ public class Modderator {
 	}
 	GUI gui;
 	downloadsGUI downloadsGui;
-	String repoPath = "http://REPO.ADDRESS/"+gameModule.onlineName+"/";
+	String repoPath = "http://REPO.ADDRESS/";
 	public static String appliedMods = "";
 	ArrayList<mod> appliedModsList = new ArrayList<mod>();
 	boolean isDeveloper = false;
@@ -85,9 +85,14 @@ public class Modderator {
 		gui = new GUI(this);
 		downloadsGui = new downloadsGUI(this);
 
+		gui.init();
+		downloadsGui.init();
+
 		//update the main program
 		checkForModderatorUpdate();
-
+	}
+	
+	void gameSelected(){
 		//load config
 		loadFromConfig();
 		
@@ -96,28 +101,16 @@ public class Modderator {
 
 		//load enabled mods
 		setModStatuses();
-
-		gui.init();
-		downloadsGui.init();
 		
 		gameModule.init();
-
-		if ( mods.size()>0 && gui.showYesNo("Update mods?", "Would you like to update your mods?") == 0){ //0 is yes.
-			//update mods
-			int updated = checkForModUpdates();
-			if (updated>0){
-				gui.showMessage("Updated:\n"+updated);
-			}else if(updated == 0)
-				gui.showMessage("All mods up to date!");
-		}
 	}
 	
 	
 	boolean applyMod(mod m) throws java.io.IOException	{
+		gameModule.applyMod(m);
+		
 		appliedMods += m.name+"|";
 		m.patchesToSave.clear();
-		
-		
 		
 		ZipFile sourceZip = new ZipFile(m.fileName);
 		for (String s: m.fileNames){
@@ -311,6 +304,8 @@ public class Modderator {
 			// Add all mods to be added
 			appliedMods = "";
 			appliedModsList.clear();
+			
+			gameModule.onStartApplyMods();
 			
 			// Apply all mods
 			for (mod m: modsToApply)
@@ -601,7 +596,7 @@ public class Modderator {
 		purgedOnlineList = true;
 	}
 
-	private int checkForModUpdates(){
+	int checkForModUpdates(){
 
 		if (!populateOnlineModsTable()) return -1;
 		purgedOnlineList = false;

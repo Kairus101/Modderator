@@ -4,6 +4,7 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
+import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.WindowEvent;
@@ -12,9 +13,12 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.ArrayList;
+import java.util.Enumeration;
 import java.util.regex.Pattern;
 
+import javax.swing.Icon;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
@@ -34,6 +38,7 @@ import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
 import javax.swing.RowFilter;
+import javax.swing.SwingConstants;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 import javax.swing.event.DocumentEvent;
@@ -45,6 +50,7 @@ import javax.swing.table.TableCellRenderer;
 import javax.swing.table.TableRowSorter;
 
 import org.Kairus.Modderator.onlineModDescription;
+import org.Kairus.Modules.GameModule;
 
 public class GUI extends JFrame {
 	private static final long serialVersionUID = 1L;
@@ -54,7 +60,7 @@ public class GUI extends JFrame {
 	JMenu GUImenu = new JMenu("File");
 	JMenu GUIsettings = new JMenu("Settings");
 	JMenu GUIhelp = new JMenu("Help");
-	JMenuItem GUIcreateBat = new JMenuItem("Create Strife launcher");
+	JMenuItem GUIcreateBat = new JMenuItem("Create game launcher");
 	JMenuItem GUIhelpUser = new JMenuItem("User Help");
 	JMenuItem GUIhelpDev = new JMenuItem("Developer Help");
 	JMenuItem GUIhelpAbout = new JMenuItem("About");
@@ -73,6 +79,9 @@ public class GUI extends JFrame {
 	JComponent panel1 = new JPanel();
 	JComponent panel2 = new JPanel();
 	JTabbedPane tabbedPane = new JTabbedPane();
+	
+
+	JComponent gameSelectPanel = new JPanel();
 
 	JTextField filterMods = new JTextField(10);
 	JTextField filterOnline = new JTextField(10);
@@ -109,7 +118,19 @@ public class GUI extends JFrame {
 		super("Modderator");
 		modderator = mm;
 	}
-	public void init(){
+	
+
+	public void showMainScreen(){
+		
+		if ( modderator.mods.size()>0 && showYesNo("Update mods?", "Would you like to update your mods?") == 0){ //0 is yes.
+			//update mods
+			int updated = modderator.checkForModUpdates();
+			if (updated>0){
+				showMessage("Updated:\n"+updated);
+			}else if(updated == 0)
+				showMessage("All mods up to date!");
+		}
+		
 		// layout
 		setLayout(new BorderLayout());
 		panel1.setLayout(new BorderLayout());
@@ -143,8 +164,15 @@ public class GUI extends JFrame {
 		table.setRowHeight(50);
 		table.setPreferredScrollableViewportSize(new Dimension(200, 70));
 		table.setFillsViewportHeight(true);
+		
 		table.getColumnModel().getColumn(2).setMinWidth(150);
 		table.getColumnModel().getColumn(1).setMaxWidth(55);
+		sorter.setSortable(0, false);
+		sorter.setSortable(1, false);
+		sorter.setSortable(2, false);
+		sorter.setSortable(3, false);
+		sorter.setSortable(4, false);
+		table.getTableHeader().setReorderingAllowed(false);
 		table.removeColumn(table.getColumnModel().getColumn(5));
 		JScrollPane modPanel = new JScrollPane(table);
 		panel1.add(modPanel, BorderLayout.CENTER);
@@ -224,11 +252,6 @@ public class GUI extends JFrame {
 					}
 				}
 			}});
-		addWindowListener(new java.awt.event.WindowAdapter() {
-			@Override
-			public void windowClosing(WindowEvent winEvt) {
-				System.exit(0);
-			}});
 		GUIexit.addActionListener(new ActionListener(){
 			@Override
 			public void actionPerformed(ActionEvent e) {
@@ -239,8 +262,8 @@ public class GUI extends JFrame {
 			public void actionPerformed(ActionEvent e) {
 				try {
 					int kbChunks = 1 << 10; //1kb
-					java.io.BufferedInputStream in = new java.io.BufferedInputStream(new java.net.URL("https://dl.dropboxusercontent.com/s/cd84fjiohmhh14f/Modded%20Strife.exe?dl=1&token_hash=AAF_M_3M7-cZq8khwnaf1xiPk57kuc5cEL2WgY3_jMicOQ").openStream());
-					java.io.FileOutputStream fos = new java.io.FileOutputStream("Modded Strife.exe");
+					java.io.BufferedInputStream in = new java.io.BufferedInputStream(new java.net.URL(modderator.gameModule.exeURL).openStream());
+					java.io.FileOutputStream fos = new java.io.FileOutputStream("Modded "+modderator.gameModule.name+".exe");
 					java.io.BufferedOutputStream bout = new BufferedOutputStream(fos,kbChunks*1024);
 					byte[] data = new byte[kbChunks*1024];
 					int x=0;
@@ -249,7 +272,7 @@ public class GUI extends JFrame {
 					bout.flush();
 					bout.close();
 					in.close();
-					showMessage("Created "+new File("Modded Strife.exe").getAbsolutePath()+", this needs to stay next to Modderator.jar, but you can create shortcuts from it or pin it to your taskbar!");
+					showMessage("Created "+new File("Modded "+modderator.gameModule.name+".exe").getAbsolutePath()+", this needs to stay next to Modderator.jar, but you can create shortcuts from it or pin it to your taskbar!");
 				} catch (FileNotFoundException e2) {
 					e2.printStackTrace();
 				} catch (MalformedURLException e3) {
@@ -334,6 +357,7 @@ public class GUI extends JFrame {
 						+ "  Branched off my Strife modman v1.16"
 				);
 				popup.add(new JScrollPane(changes));
+				changes.setEditable(false);
 				popup.setVisible(true);
 			}});
 
@@ -372,11 +396,62 @@ public class GUI extends JFrame {
 		add(tabbedPane);
 
 
+
+		if (modderator.gameModule.warningOnNoExe && !new File("Modded "+modderator.gameModule.name+".exe").exists())
+			showMessage("You can easily start the game with mods with the file created by: File->Create Game launcher!");
+
 		setSize(600, 600);
 		setVisible(true);
-
-		if (!new File("Modded Strife.exe").exists())
-			showMessage("You can easily start the game with mods with the file created by: File->Create Strife launcher!");
+	}
+	
+	public void gameSelected(String game){
+		ClassLoader classLoader = Modderator.class.getClassLoader();
+		try {
+			modderator.gameModule = (GameModule) classLoader.loadClass("org.Kairus.Modules."+game+"Module").newInstance();
+		} catch (InstantiationException e) {
+			e.printStackTrace();
+		} catch (IllegalAccessException e) {
+			e.printStackTrace();
+		} catch (ClassNotFoundException e) {
+			e.printStackTrace();
+		}
+		setVisible(false);
+		gameSelectPanel.setVisible(false);
+		modderator.gameSelected();
+		showMainScreen();
+	}
+	
+	public void showGameSelectScreen(){
+		gameSelectPanel.setLayout(new GridLayout(0, 2));
+		
+		for (File f : new File("modules/").listFiles()) {
+			final String name = f.getName().substring(0, f.getName().indexOf("."));
+			JButton j = new JButton(name);
+			j.setHorizontalTextPosition(SwingConstants.CENTER);
+			j.setVerticalTextPosition(SwingConstants.BOTTOM);
+			j.setIcon(new ImageIcon(f.getAbsolutePath()));
+			gameSelectPanel.add(j);
+			
+			j.addActionListener(new ActionListener(){
+				@Override
+				public void actionPerformed(ActionEvent e) {
+					gameSelected(name);
+				}});
+        }
+		
+		add(gameSelectPanel);
+		setSize(600, 600);
+		setResizable(false);
+		setVisible(true);
+	}
+	
+	public void init(){
+		addWindowListener(new java.awt.event.WindowAdapter() {
+			@Override
+			public void windowClosing(WindowEvent winEvt) {
+				System.exit(0);
+		}});
+		showGameSelectScreen();
 	}
 
 	void makeTable2Data(){

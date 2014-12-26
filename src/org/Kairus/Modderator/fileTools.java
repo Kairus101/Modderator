@@ -162,25 +162,6 @@ public class fileTools {
 		a.add(o);
 	}
 	
-	public static String getStrifeVersionFromFile(String path){
-		String version = "";
-		try {
-			BufferedReader reader = new BufferedReader(new FileReader(path));
-			reader.readLine();
-			version = reader.readLine();
-			version = version.substring(0, version.lastIndexOf("\""));
-			version = version.substring(version.lastIndexOf("\"")+1);
-			while (version.endsWith(".0")) version = version.substring(0, version.length()-2);
-			reader.close();
-			//System.out.println(version);
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		return version;
-	}
-	
 	public static void recursiveDelete(File file) {
         if (!file.exists())
             return;
